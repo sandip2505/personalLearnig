@@ -1,9 +1,9 @@
-import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useColorScheme, Platform } from 'react-native';
+import React from 'react';
+import { Platform, useColorScheme } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { ELearningHomePage, CoursesScreen, MyCoursesPage, ProfileScreen } from '../screens';
 import { colors } from '../constants/colors';
+import { CoursesScreen, ELearningHomePage, MyCoursesPage, ProfileScreen } from '../screens';
 
 const Tab = createBottomTabNavigator();
 
@@ -36,7 +36,7 @@ const BottomTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => 
+        tabBarIcon: ({ focused, color, size }) =>
           getTabBarIcon(route.name, focused, color, size),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: isDarkMode ? colors.textSecondaryDark : colors.textSecondary,
@@ -51,7 +51,7 @@ const BottomTabNavigator: React.FC = () => {
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 90 : 70,
           paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-          paddingTop: 10,
+          padding: 10,
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: {
@@ -78,32 +78,32 @@ const BottomTabNavigator: React.FC = () => {
         },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={ELearningHomePage}
         options={{
           headerTitle: 'Home',
           headerShown: false
         }}
       />
-      <Tab.Screen 
-        name="Courses" 
+      <Tab.Screen
+        name="Courses"
         component={CoursesScreen}
         options={{
           headerTitle: 'My Courses',
           headerShown: false
         }}
       />
-      <Tab.Screen 
-        name="Progress" 
+      <Tab.Screen
+        name="Progress"
         component={MyCoursesPage}
         options={{
           headerTitle: 'Progress',
           headerShown: false
         }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{
           headerTitle: 'Profile',
