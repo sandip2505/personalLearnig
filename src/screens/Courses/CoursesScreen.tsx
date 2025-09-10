@@ -10,11 +10,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  SafeAreaView,
   Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const { width } = Dimensions.get('window');
 
@@ -211,14 +212,7 @@ export const CoursesScreen: React.FC = () => {
   const totalPages = Math.ceil(allCourses.length / coursesPerPage);
 
   const handleCoursePress = (courseId: string) => {
-    // Replace with your actual course detail screen navigation
-    Alert.alert('Course Details', `Opening course ${courseId}`, [
-      { text: 'OK', onPress: () => {} },
-      { text: 'Navigate', onPress: () => {
-        navigation.navigate('CourseDetails', { courseId });
-        console.log(`Navigate to course ${courseId}`);
-      }}
-    ]);
+    navigation.navigate('CourseDetails', { courseId });
   };
 
   // Filter courses based on search, category, and filters

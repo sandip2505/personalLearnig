@@ -9,6 +9,9 @@ import MyCoursesScreen from '../screens/MyCourses/MyCoursesScreen';
 import NotificationScreen from '../screens/Notification/NotificationScreen';
 import PaymentScreen from '../screens/Payment/PaymentScreen';
 import SettingsScreen from '../screens/Settings/SettingsScreen';
+import CertificateScreen from '../screens/Certificate/CertificateScreen';
+import CategoryCourses from '../screens/Categories/CategoryCourses';
+
 import BottomTabNavigator from './BottomTabNavigator';
 import HelpAndSupportScreen from '../screens/HelpAndSupport/HelpAndSupportScreen';
 
@@ -24,6 +27,8 @@ export type RootStackParamList = {
   Settings: undefined;
   HelpAndSupport: undefined;
   CourseLessons: { courseId: string };
+  Certificate:undefined;
+  Category:undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,7 +40,7 @@ const RootNavigator: React.FC = () => {
       <Stack.Screen
         name="CourseDetails"
         component={CourseDetailsScreen}
-        options={{ headerShown: true, title: 'Course Details' }}
+        options={{ headerShown: false, title: 'Course Details' }}
       />
       <Stack.Screen
         name="Payment"
@@ -80,6 +85,17 @@ const RootNavigator: React.FC = () => {
         component={CourseLessonsScreen}
         options={{ headerShown: true, title: 'Lessons' }}
       />
+      <Stack.Screen
+        name="Certificate"
+        component={CertificateScreen}
+        options={{ headerShown: true, title: 'Certificate' }}
+      />
+      <Stack.Screen
+        name="Category"
+        component={CategoryCourses}
+        options={{ headerShown: true, title: 'Browse Categories' }}
+      />
+
     </Stack.Navigator>
   );
 };

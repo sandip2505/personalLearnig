@@ -414,7 +414,7 @@ const CourseLessonsScreen = ({ navigation, route }) => {
           </View>
           <View style={styles.statItem}>
             <Ionicons name="people" size={16} color="white" />
-            <Text style={styles.statText}>{course.students.toLocaleString()}</Text>
+            <Text style={styles.statText}>{course?.students ? course.students.toLocaleString() : "0"}</Text>
           </View>
           <View style={styles.statItem}>
             <Ionicons name="time" size={16} color="white" />
@@ -671,7 +671,7 @@ const CourseLessonsScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -682,7 +682,7 @@ const CourseLessonsScreen = ({ navigation, route }) => {
         <TouchableOpacity style={styles.headerIcon}>
           <Ionicons name="bookmark-outline" size={22} color="#333" />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <FlatList
         data={lessonsData}

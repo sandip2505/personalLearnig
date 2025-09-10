@@ -288,7 +288,7 @@ const MyCoursesPage = ({ navigation }) => {
               ))}
             </View>
           </View>
-          <TouchableOpacity style={styles.certificateButton} onPress={() => navigateTo('Certificates', { id: item.id })}>
+          <TouchableOpacity style={styles.certificateButton} onPress={() => navigateTo('Certificate', { id: item.id })}>
             <Ionicons name="ribbon" size={16} color="#007AFF" />
             <Text style={styles.certificateButtonText}>Certificate</Text>
           </TouchableOpacity>

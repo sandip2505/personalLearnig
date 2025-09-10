@@ -146,7 +146,7 @@ const ELearningHomePage = ({ navigation }) => {
   };
 
   const renderCategoryItem = ({ item }) => (
-    <TouchableOpacity style={[styles.categoryCard, { backgroundColor: item.color + '20' }]}>
+    <TouchableOpacity style={[styles.categoryCard, { backgroundColor: item.color + '20' }]} onPress={() => navigateTo('Category')}>
       <View style={[styles.categoryIcon, { backgroundColor: item.color }]}>
         <Ionicons name={item.icon} size={24} color="white" />
       </View>
