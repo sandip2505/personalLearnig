@@ -146,7 +146,7 @@ const ELearningHomePage = ({ navigation }) => {
   };
 
   const renderCategoryItem = ({ item }) => (
-    <TouchableOpacity style={[styles.categoryCard, { backgroundColor: item.color + '20' }]} onPress={() => navigateTo('Category')}>
+    <TouchableOpacity style={[styles.categoryCard, { backgroundColor: item.color + '20' }]} onPress={() => navigateTo('Category', { category: item.name })}>
       <View style={[styles.categoryIcon, { backgroundColor: item.color }]}>
         <Ionicons name={item.icon} size={24} color="white" />
       </View>
@@ -156,7 +156,7 @@ const ELearningHomePage = ({ navigation }) => {
   );
 
   const renderFeaturedCourse = ({ item }) => (
-    <TouchableOpacity style={styles.featuredCard} onPress={() => navigateTo('Course', { id: item.id })}>
+    <TouchableOpacity style={styles.featuredCard} onPress={() => navigateTo('CourseDetails', { id: item.id })}>
       <Image source={{ uri: item.image }} style={styles.featuredImage} />
       <View style={styles.featuredContent}>
         <View style={styles.featuredCategory}>
@@ -206,7 +206,7 @@ const ELearningHomePage = ({ navigation }) => {
             <TouchableOpacity style={styles.headerIcon}>
               <Ionicons name="search" size={24} color="#333" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon} onPress={() => navigateTo('Notification')}>
+            <TouchableOpacity style={styles.headerIcon} onPress={() => navigateTo('Notifications')}>
               <Ionicons name="notifications-outline" size={24} color="#333" />
               <View style={styles.notificationBadge} />
             </TouchableOpacity>
@@ -231,7 +231,7 @@ const ELearningHomePage = ({ navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Browse Categories</Text>
-            <TouchableOpacity>
+            <TouchableOpacity >
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
@@ -249,7 +249,7 @@ const ELearningHomePage = ({ navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured Courses</Text>
-            <TouchableOpacity onPress={() => navigateTo('Course')}>
+            <TouchableOpacity onPress={() => navigateTo('Courses')}>
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>

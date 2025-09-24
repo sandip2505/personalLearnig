@@ -1,5 +1,6 @@
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { login } from '../../api/auth';
 import {
   Dimensions,
   KeyboardAvoidingView,
@@ -13,34 +14,148 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationProp } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
-const LoginScreen = ({ navigation }) => {
+interface LoginScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+interface ValidationErrors {
+  email?: string;
+  password?: string;
+  general?: string;
+}
+
+const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+
+  // Clear specific field error when user starts typing
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (errors.email) {
+      setErrors(prev => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (errors.password) {
+      setErrors(prev => ({ ...prev, password: undefined }));
+    }
+  };
+
+  // Clear general error when user interacts with form
+  const clearGeneralError = () => {
+    if (errors.general) {
+      setErrors(prev => ({ ...prev, general: undefined }));
+    }
+  };
+
+  // Validate form fields
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+
+    // Email validation
+    if (!email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else if (!emailRegex.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    // Password validation
+    if (!password.trim()) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters long';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLogin = async () => {
+    // Clear previous errors
+    setErrors({});
+
+    // Validate form
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      const credential = { email: email.trim(), password };
+      console.log('Sending credentials:', { email: credential.email, password: '***' });
+
+      const response = await login(credential);
+      console.log('Login successful:', response);
+
+      // Navigate after successful login
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
+    } catch (error: any) {
+      console.error('Login error:', error);
+      
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      // Handle different types of API errors
+      if (error.response) {
+        // Server responded with error status
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        switch (status) {
+          case 400:
+            if (data?.message) {
+              errorMessage = data.message;
+            } else {
+              errorMessage = 'Invalid request. Please check your input.';
+            }
+            break;
+          case 401:
+            errorMessage = 'Invalid email or password. Please try again.';
+            break;
+          case 403:
+            errorMessage = 'Account access denied. Please contact support.';
+            break;
+          case 404:
+            errorMessage = 'Account not found. Please check your email or sign up.';
+            break;
+          case 429:
+            errorMessage = 'Too many login attempts. Please try again later.';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later.';
+            break;
+          default:
+            errorMessage = data?.message || 'Login failed. Please try again.';
+        }
+      } else if (error.request) {
+        // Network error
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.message) {
+        // Other error with message
+        errorMessage = error.message;
+      }
+
+      setErrors({ general: errorMessage });
+    } finally {
       setIsLoading(false);
-      // Navigate to home screen on successful login
-      navigation.replace('Home');
-    }, 2000);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -51,7 +166,7 @@ const LoginScreen = ({ navigation }) => {
     navigation.navigate('Register');
   };
 
-  const handleSocialLogin = (provider) => {
+  const handleSocialLogin = (provider: any) => {
     Alert.alert('Social Login', `${provider} login will be implemented`);
   };
 
@@ -87,35 +202,64 @@ const LoginScreen = ({ navigation }) => {
 
           {/* Form */}
           <View style={styles.formSection}>
+            {/* General Error Message */}
+            {errors.general && (
+              <View style={styles.generalErrorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#FF3B30" />
+                <Text style={styles.generalErrorText}>{errors.general}</Text>
+              </View>
+            )}
+
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+              <View style={[
+                styles.inputWrapper,
+                errors.email && styles.inputWrapperError
+              ]}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={errors.email ? "#FF3B30" : "#666"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
                   placeholderTextColor="#999"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={handleEmailChange}
+                  onFocus={clearGeneralError}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                 />
               </View>
+              {errors.email && (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              )}
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+              <View style={[
+                styles.inputWrapper,
+                errors.password && styles.inputWrapperError
+              ]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={errors.password ? "#FF3B30" : "#666"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your password"
                   placeholderTextColor="#999"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={handlePasswordChange}
+                  onFocus={clearGeneralError}
                   secureTextEntry={!showPassword}
                   autoComplete="password"
                 />
@@ -124,22 +268,31 @@ const LoginScreen = ({ navigation }) => {
                   onPress={() => setShowPassword(!showPassword)}
                 >
                   <Ionicons
-                    name={showPassword ? "eye-outline" : "eye-off-outline"}
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={20}
-                    color="#666"
+                    color={errors.password ? "#FF3B30" : "#666"}
                   />
                 </TouchableOpacity>
               </View>
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
             </View>
 
             {/* Forgot Password */}
-            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
+            <TouchableOpacity
+              onPress={handleForgotPassword}
+              style={styles.forgotPassword}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
             {/* Login Button */}
             <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+              style={[
+                styles.loginButton,
+                isLoading && styles.loginButtonDisabled,
+              ]}
               onPress={handleLogin}
               disabled={isLoading}
             >
@@ -239,6 +392,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 30,
   },
+  // General error message styles
+  generalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF2F2',
+    borderWidth: 1,
+    borderColor: '#FFD6D6',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  generalErrorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+    fontWeight: '500',
+  },
   inputContainer: {
     marginBottom: 20,
   },
@@ -260,6 +431,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  // Error state for input wrapper
+  inputWrapperError: {
+    borderColor: '#FF3B30',
+    borderWidth: 1.5,
+    elevation: 1,
+    shadowColor: '#FF3B30',
+    shadowOpacity: 0.2,
   },
   inputIcon: {
     marginRight: 12,
@@ -271,6 +452,14 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 5,
+  },
+  // Error text styles
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 5,
+    fontWeight: '500',
   },
   forgotPassword: {
     alignSelf: 'flex-end',

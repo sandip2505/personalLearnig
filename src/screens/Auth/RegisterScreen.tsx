@@ -1,5 +1,6 @@
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import React, { useState } from 'react';
+import { register } from '../../api/auth'; // Assuming you have a register API function
 import {
   Dimensions,
   KeyboardAvoidingView,
@@ -13,11 +14,32 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationProp } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
-const RegisterScreen = ({ navigation }) => {
-  const [formData, setFormData] = useState({
+interface RegisterScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+interface FormData {
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface ValidationErrors {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  terms?: string;
+  general?: string;
+}
+
+const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
+  const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
     password: '',
@@ -27,56 +49,113 @@ const RegisterScreen = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
-  const handleInputChange = (field, value) => {
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  // Name validation regex (letters, spaces, hyphens, apostrophes)
+  const nameRegex = /^[a-zA-Z\s\-']{2,50}$/;
+
+  const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Clear field-specific error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+
+    // Clear password match error when either password field changes
+    if ((field === 'password' || field === 'confirmPassword') && errors.confirmPassword) {
+      setErrors(prev => ({ ...prev, confirmPassword: undefined }));
+    }
   };
 
-  const validateForm = () => {
+  // Clear general error when user interacts with form
+  const clearGeneralError = () => {
+    if (errors.general) {
+      setErrors(prev => ({ ...prev, general: undefined }));
+    }
+  };
+
+  // Clear terms error when user checks the checkbox
+  const handleTermsChange = () => {
+    setAcceptTerms(!acceptTerms);
+    if (errors.terms) {
+      setErrors(prev => ({ ...prev, terms: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+
+    // Full Name validation
     if (!formData.fullName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
-      return false;
+      newErrors.fullName = 'Full name is required';
+    } else if (!nameRegex.test(formData.fullName.trim())) {
+      newErrors.fullName = 'Please enter a valid name (2-50 characters, letters only)';
     }
 
+    // Email validation
     if (!formData.email.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
-      return false;
+      newErrors.email = 'Email address is required';
+    } else if (!emailRegex.test(formData.email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return false;
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain uppercase, lowercase, and number';
     }
 
-    if (formData.password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long');
-      return false;
+    // Confirm Password validation
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return false;
-    }
-
+    // Terms validation
     if (!acceptTerms) {
-      Alert.alert('Error', 'Please accept the Terms and Conditions');
-      return false;
+      newErrors.terms = 'Please accept the Terms and Conditions';
     }
 
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    // Clear previous errors
+    setErrors({});
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const userData = {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+      };
+
+      console.log('Sending registration data:', { ...userData, password: '***' });
+
+      // Replace this with your actual register API call
+      const response = await register(userData);
+      console.log('Registration successful:', response);
+
+      // Show success message and navigate to login
       Alert.alert(
         'Success!',
         'Account created successfully. Please check your email to verify your account.',
@@ -87,14 +166,56 @@ const RegisterScreen = ({ navigation }) => {
           }
         ]
       );
-    }, 2000);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      // Handle different types of API errors
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        switch (status) {
+          case 400:
+            if (data?.message) {
+              errorMessage = data.message;
+            } else {
+              errorMessage = 'Invalid request. Please check your input.';
+            }
+            break;
+          case 409:
+            errorMessage = 'An account with this email already exists. Please try logging in.';
+            break;
+          case 422:
+            errorMessage = 'Invalid data provided. Please check your information.';
+            break;
+          case 429:
+            errorMessage = 'Too many registration attempts. Please try again later.';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later.';
+            break;
+          default:
+            errorMessage = data?.message || 'Registration failed. Please try again.';
+        }
+      } else if (error.request) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setErrors({ general: errorMessage });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const navigateToLogin = () => {
     navigation.navigate('Login');
   };
 
-  const handleSocialRegister = (provider) => {
+  const handleSocialRegister = (provider: string) => {
     Alert.alert('Social Register', `${provider} registration will be implemented`);
   };
 
@@ -143,52 +264,93 @@ const RegisterScreen = ({ navigation }) => {
 
           {/* Form */}
           <View style={styles.formSection}>
+            {/* General Error Message */}
+            {errors.general && (
+              <View style={styles.generalErrorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#FF3B30" />
+                <Text style={styles.generalErrorText}>{errors.general}</Text>
+              </View>
+            )}
+
             {/* Full Name Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Full Name</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+              <View style={[
+                styles.inputWrapper,
+                errors.fullName && styles.inputWrapperError
+              ]}>
+                <Ionicons 
+                  name="person-outline" 
+                  size={20} 
+                  color={errors.fullName ? "#FF3B30" : "#666"} 
+                  style={styles.inputIcon} 
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your full name"
                   placeholderTextColor="#999"
                   value={formData.fullName}
                   onChangeText={(value) => handleInputChange('fullName', value)}
+                  onFocus={clearGeneralError}
                   autoCapitalize="words"
                   autoComplete="name"
                 />
               </View>
+              {errors.fullName && (
+                <Text style={styles.errorText}>{errors.fullName}</Text>
+              )}
             </View>
 
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+              <View style={[
+                styles.inputWrapper,
+                errors.email && styles.inputWrapperError
+              ]}>
+                <Ionicons 
+                  name="mail-outline" 
+                  size={20} 
+                  color={errors.email ? "#FF3B30" : "#666"} 
+                  style={styles.inputIcon} 
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
                   placeholderTextColor="#999"
                   value={formData.email}
                   onChangeText={(value) => handleInputChange('email', value)}
+                  onFocus={clearGeneralError}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                 />
               </View>
+              {errors.email && (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              )}
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+              <View style={[
+                styles.inputWrapper,
+                errors.password && styles.inputWrapperError
+              ]}>
+                <Ionicons 
+                  name="lock-closed-outline" 
+                  size={20} 
+                  color={errors.password ? "#FF3B30" : "#666"} 
+                  style={styles.inputIcon} 
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Create a password"
                   placeholderTextColor="#999"
                   value={formData.password}
                   onChangeText={(value) => handleInputChange('password', value)}
+                  onFocus={clearGeneralError}
                   secureTextEntry={!showPassword}
                   autoComplete="new-password"
                 />
@@ -199,12 +361,12 @@ const RegisterScreen = ({ navigation }) => {
                   <Ionicons
                     name={showPassword ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#666"
+                    color={errors.password ? "#FF3B30" : "#666"}
                   />
                 </TouchableOpacity>
               </View>
               {/* Password Strength Indicator */}
-              {formData.password.length > 0 && (
+              {formData.password.length > 0 && !errors.password && (
                 <View style={styles.passwordStrength}>
                   <View style={styles.strengthBar}>
                     <View
@@ -222,19 +384,31 @@ const RegisterScreen = ({ navigation }) => {
                   </Text>
                 </View>
               )}
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
             </View>
 
             {/* Confirm Password Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Confirm Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+              <View style={[
+                styles.inputWrapper,
+                errors.confirmPassword && styles.inputWrapperError
+              ]}>
+                <Ionicons 
+                  name="lock-closed-outline" 
+                  size={20} 
+                  color={errors.confirmPassword ? "#FF3B30" : "#666"} 
+                  style={styles.inputIcon} 
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm your password"
                   placeholderTextColor="#999"
                   value={formData.confirmPassword}
                   onChangeText={(value) => handleInputChange('confirmPassword', value)}
+                  onFocus={clearGeneralError}
                   secureTextEntry={!showConfirmPassword}
                   autoComplete="new-password"
                 />
@@ -245,27 +419,42 @@ const RegisterScreen = ({ navigation }) => {
                   <Ionicons
                     name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#666"
+                    color={errors.confirmPassword ? "#FF3B30" : "#666"}
                   />
                 </TouchableOpacity>
               </View>
+              {errors.confirmPassword && (
+                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+              )}
             </View>
 
             {/* Terms and Conditions */}
             <TouchableOpacity
               style={styles.checkboxContainer}
-              onPress={() => setAcceptTerms(!acceptTerms)}
+              onPress={handleTermsChange}
             >
-              <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
+              <View style={[
+                styles.checkbox, 
+                acceptTerms && styles.checkboxChecked,
+                errors.terms && styles.checkboxError
+              ]}>
                 {acceptTerms && <Ionicons name="checkmark" size={16} color="white" />}
               </View>
-              <Text style={styles.checkboxText}>
+              <Text style={[
+                styles.checkboxText,
+                errors.terms && styles.checkboxTextError
+              ]}>
                 I agree to the{' '}
                 <Text style={styles.linkText}>Terms and Conditions</Text>
                 {' '}and{' '}
                 <Text style={styles.linkText}>Privacy Policy</Text>
               </Text>
             </TouchableOpacity>
+            {errors.terms && (
+              <Text style={[styles.errorText, { marginTop: -15, marginBottom: 15 }]}>
+                {errors.terms}
+              </Text>
+            )}
 
             {/* Register Button */}
             <TouchableOpacity
@@ -369,6 +558,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+  // General error message styles
+  generalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF2F2',
+    borderWidth: 1,
+    borderColor: '#FFD6D6',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  generalErrorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+    fontWeight: '500',
+  },
   inputContainer: {
     marginBottom: 20,
   },
@@ -390,6 +597,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  // Error state for input wrapper
+  inputWrapperError: {
+    borderColor: '#FF3B30',
+    borderWidth: 1.5,
+    elevation: 1,
+    shadowColor: '#FF3B30',
+    shadowOpacity: 0.2,
   },
   inputIcon: {
     marginRight: 12,
@@ -401,6 +618,14 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 5,
+  },
+  // Error text styles
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 5,
+    fontWeight: '500',
   },
   passwordStrength: {
     flexDirection: 'row',
@@ -442,11 +667,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
   },
+  checkboxError: {
+    borderColor: '#FF3B30',
+  },
   checkboxText: {
     flex: 1,
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  checkboxTextError: {
+    color: '#FF3B30',
   },
   linkText: {
     color: '#007AFF',
